@@ -208,6 +208,26 @@ class TestFormatNumber:
         result = _format_number(s, 2, None, invoice_date=date(2025, 4, 1))
         assert result == "INV/2025/0002"
 
+    def test_overflow_sequence_digits_preserved(self):
+        """Sequence number longer than pad_digits is preserved without truncation."""
+        s = make_series(1, include_year=False, pad_digits=3)
+        result = _format_number(s, 12345, None)
+        assert result == "INV-12345"
+
+    def test_arbitrary_year_format_defaults_to_yyyy(self):
+        """Any year_format other than FY or MM-YYYY defaults to 4-digit year."""
+        s = make_series(1, year_format="standard", suffix="-TX")
+        result = _format_number(s, 5, None, invoice_date=date(2026, 7, 20))
+        assert result == "INV-2026-005-TX"
+
+    def test_mm_yyyy_fallback_today_when_no_date(self):
+        """year_format == 'MM-YYYY' with invoice_date=None falls back to current month and year."""
+        from datetime import UTC, datetime
+        s = make_series(1, year_format="MM-YYYY")
+        today = datetime.now(UTC).date()
+        expected = f"INV-{today.strftime('%m')}-{today.year}-001"
+        assert _format_number(s, 1, None, invoice_date=None) == expected
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # generate_next_number — FY-date and format-borrowing
