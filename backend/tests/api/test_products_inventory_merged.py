@@ -574,6 +574,32 @@ class TestCSVImport:
         assert items["IMP021"]["current_stock"] == 5
         assert items["IMP020"]["current_stock"] == 4
 
+    def test_import_csv_row_with_extra_cells_errors_and_imports_others(self, client):
+        """A row with more cells than the header is reported as an error and skipped (Issue #749)."""
+        csv_content = (
+            "Item Name,Item Code\n"
+            "Widget,W-1,oops\n"
+            "Gadget,G-1\n"
+        )
+        res = client.post(
+            "/api/products/import-csv",
+            files={"file": ("test.csv", csv_content.encode("utf-8"), "text/csv")},
+        )
+        assert res.status_code == 200
+        data = res.json()
+        assert data["created"] == 1
+        assert data["updated"] == 0
+        assert data["errors"] == [{"row": 2, "message": "Row 2 has more cells than the header row"}]
+
+        # Gadget was created, Widget was skipped
+        items = client.get("/api/products/with-inventory?search=G-1").json()["items"]
+        assert len(items) == 1
+        assert items[0]["name"] == "Gadget"
+        assert items[0]["sku"] == "G-1"
+
+        missing = client.get("/api/products/with-inventory?search=W-1").json()["items"]
+        assert len(missing) == 0
+
 
 class TestProductPurchasePriceAndReorderLevel:
     """Tests for purchase_price and reorder_level fields on products (Issue #385)."""
