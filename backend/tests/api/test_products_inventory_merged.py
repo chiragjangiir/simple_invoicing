@@ -575,10 +575,10 @@ class TestCSVImport:
         assert items["IMP020"]["current_stock"] == 4
 
     def test_import_csv_row_with_extra_cells_errors_and_imports_others(self, client):
-        """A row with more cells than the header is reported as an error and skipped (Issue #749)."""
+        """A row with more cells than the header is reported as an error and skipped, while rows with fewer cells keep working (Issue #749)."""
         csv_content = (
-            "Item Name,Item Code\n"
-            "Widget,W-1,oops\n"
+            "Item Name,Item Code,Description\n"
+            "Widget,W-1,oops,extra\n"
             "Gadget,G-1\n"
         )
         res = client.post(
@@ -589,7 +589,10 @@ class TestCSVImport:
         data = res.json()
         assert data["created"] == 1
         assert data["updated"] == 0
-        assert data["errors"] == [{"row": 2, "message": "Row 2 has more cells than the header row"}]
+        assert data["errors"] == [{
+            "row": 2,
+            "message": "This row has more cells than the header row. Check for an unquoted comma, for example in Description.",
+        }]
 
         # Gadget was created, Widget was skipped
         items = client.get("/api/products/with-inventory?search=G-1").json()["items"]

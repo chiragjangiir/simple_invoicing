@@ -891,7 +891,10 @@ def _import_csv_from_content(content: bytes, db: Session, active_company: Compan
     for row in reader:
         row_num += 1
         if None in row:
-            errors.append({"row": row_num, "message": f"Row {row_num} has more cells than the header row"})
+            errors.append({
+                "row": row_num,
+                "message": "This row has more cells than the header row. Check for an unquoted comma, for example in Description.",
+            })
             continue
 
         values = dict(zip(normalised, [v.strip() if isinstance(v, str) and v else "" for v in row.values()]))
